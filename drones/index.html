@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Drones e Ética</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Um único mundo visual: a sala do operador, escura, com leituras térmicas. Coluna central de leitura; a missão e o algoritmo lado a lado em telas largas. */
+  --bg: #0d1115;
+  --panel: #151b21;
+  --line: #27313a;
+  --ink: #e6ebef;
+  --muted: #95a3ae;
+  --accent: #e9a23b;
+  --act: #e0574a;
+  --wait: #e3c14b;
+  --abort: #5b9bd5;
+  --ok: #57b38a;
+  --display: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: "IBM Plex Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55; }
+a { color: var(--accent); }
+button { font: inherit; cursor: pointer; }
+button:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 64px; display: grid; gap: 20px; }
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+header.top h1 { margin: 0; font-size: 1.6rem; font-weight: 700; text-wrap: balance; }
+header.top .sub { color: var(--muted); font-size: .95rem; }
+.progress { font-family: var(--mono); font-size: .85rem; color: var(--muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.dot { width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); display: inline-grid; place-items: center; font-size: .7rem; color: var(--muted); background: transparent; padding: 0; }
+.dot.done-action { background: var(--act); color: #111; border-color: var(--act); }
+.dot.done-wait { background: var(--wait); color: #111; border-color: var(--wait); }
+.dot.done-abort { background: var(--abort); color: #111; border-color: var(--abort); }
+.dot.current { outline: 2px solid var(--ink); }
+.intro { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 16px 18px; border-radius: 6px; max-width: 75ch; }
+.intro p { margin: 0 0 8px; }
+.intro p:last-child { margin: 0; }
+.grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: grid; gap: 14px; }
+.card h2 { margin: 0; font-size: 1.3rem; text-wrap: balance; }
+.card h3 { margin: 0; font-size: .8rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-family: var(--mono); font-weight: 600; }
+.card p { margin: 0; }
+.muted { color: var(--muted); }
+canvas.feed { width: 100%; height: 220px; border-radius: 6px; display: block; background: #000; }
+.metrics { display: grid; gap: 10px; }
+.metric .row { display: flex; justify-content: space-between; font-size: .9rem; }
+.metric .row span:last-child { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.metric .row code { font-family: var(--mono); font-size: .78rem; color: var(--muted); }
+.bar { height: 10px; background: #0b0f12; border: 1px solid var(--line); border-radius: 3px; overflow: hidden; }
+.bar > i { display: block; height: 100%; }
+.reasons { display: grid; gap: 10px; }
+.reason { border: 1px solid var(--line); border-left-width: 4px; border-radius: 6px; padding: 10px 12px; font-size: .95rem; }
+.reason b { display: block; font-size: .85rem; margin-bottom: 2px; }
+.reason.act { border-left-color: var(--act); }
+.reason.wait { border-left-color: var(--wait); }
+.reason.abort { border-left-color: var(--abort); }
+.editor { width: 100%; min-height: 470px; background: #0a0d10; color: #dfe7ec; border: 1px solid var(--line); border-radius: 6px; padding: 12px; font-family: var(--mono); font-size: .82rem; line-height: 1.5; resize: vertical; tab-size: 4; white-space: pre; overflow: auto; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn { border: 1px solid var(--line); background: #1d252d; color: var(--ink); padding: 9px 14px; border-radius: 6px; }
+.btn:hover:not(:disabled) { border-color: var(--muted); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.primary { background: var(--accent); color: #1a1205; border-color: var(--accent); font-weight: 600; }
+.status { font-family: var(--mono); font-size: .8rem; color: var(--muted); }
+.console { background: #0a0d10; border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; font-family: var(--mono); font-size: .82rem; white-space: pre-wrap; min-height: 74px; color: #cfd8de; overflow-x: auto; }
+.console.err { color: #ff9b8f; }
+.rec { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.pill { font-family: var(--mono); font-weight: 600; padding: 4px 10px; border-radius: 4px; font-size: .9rem; }
+.pill.AGIR { background: var(--act); color: #1b0805; }
+.pill.AGUARDAR { background: var(--wait); color: #1a1505; }
+.pill.ABORTAR { background: var(--abort); color: #06121e; }
+.pill.none { border: 1px dashed var(--line); color: var(--muted); }
+.decide { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 520px) { .decide { grid-template-columns: 1fr; } }
+.decide button { padding: 12px 8px; border-radius: 6px; border: 1px solid var(--line); background: #1d252d; color: var(--ink); font-weight: 600; position: relative; }
+.decide button.act { border-bottom: 3px solid var(--act); }
+.decide button.wait { border-bottom: 3px solid var(--wait); }
+.decide button.abort { border-bottom: 3px solid var(--abort); }
+.decide button.recommended::after { content: "recomendado"; position: absolute; top: -9px; right: 8px; font-family: var(--mono); font-size: .65rem; background: var(--ink); color: var(--bg); padding: 0 5px; border-radius: 3px; font-weight: 600; }
+.nav { display: flex; justify-content: space-between; gap: 8px; }
+.overlay { position: fixed; inset: 0; background: rgba(5, 7, 9, .82); display: none; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 24px 16px; z-index: 10; }
+.overlay.open { display: flex; }
+.sheet { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; max-width: 720px; width: 100%; padding: 22px; display: grid; gap: 14px; }
+.sheet h2 { margin: 0; font-size: 1.5rem; }
+.reveal { border: 1px solid var(--act); background: rgba(224, 87, 74, .08); border-radius: 6px; padding: 14px; display: grid; gap: 6px; }
+.reveal.ficticio { border-color: var(--line); background: #11171c; }
+.tag { font-family: var(--mono); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.followed { font-size: .95rem; padding: 10px 12px; border-radius: 6px; background: #11171c; border: 1px solid var(--line); }
+ol.prompts { margin: 0; padding-left: 20px; display: grid; gap: 4px; color: #cfd8de; }
+table.all { width: 100%; border-collapse: collapse; font-size: .88rem; }
+table.all th, table.all td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.all td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.tablewrap { overflow-x: auto; }
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.tile { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.tile b { display: block; font-family: var(--mono); font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.tile span { font-size: .85rem; color: var(--muted); }
+footer { color: var(--muted); font-size: .85rem; border-top: 1px solid var(--line); padding-top: 14px; max-width: 80ch; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Drones e Ética</h1>
+      <div class="sub">Laboratório de decisão sob incerteza · Tecnologia e Sociedade, Capítulo 2</div>
+    </div>
+    <nav class="progress" id="progress" aria-label="Missões"></nav>
+  </header>
+
+  <section class="intro">
+    <p><b>Como funciona.</b> Em cada missão você recebe os dados de um cenário. Um algoritmo de apoio à decisão, escrito em Python, analisa esses dados e recomenda <b>agir</b>, <b>aguardar</b> ou <b>abortar</b>. A decisão final é sua. Você pode ler e mudar o código do algoritmo a qualquer momento.</p>
+    <p class="muted">Algumas missões são inspiradas em casos reais, contados ao final com as fontes disponíveis. Outras são fictícias, e a tela de resultado diz qual é qual. O objetivo não é aprender a decidir ataques, e sim perceber quais escolhas humanas ficam escondidas dentro de um sistema que parece só calcular.</p>
+  </section>
+
+  <div class="grid">
+    <article class="card" id="mission" aria-live="polite"></article>
+
+    <section class="card" aria-labelledby="alg-title">
+      <h2 id="alg-title">O algoritmo</h2>
+      <p class="muted">Os dados da missão chegam ao código como variáveis, de 0 a 100. Mude os pesos e os limites (em MAIÚSCULAS) e execute de novo. Se quiser, mude também as regras.</p>
+      <label class="tag" for="code">Código em Python</label>
+      <textarea id="code" class="editor" spellcheck="false" autocapitalize="off" autocomplete="off"></textarea>
+      <div class="toolbar">
+        <button class="btn primary" id="run" disabled>▶ Executar algoritmo</button>
+        <button class="btn" id="runAll" disabled>Testar em todas as missões</button>
+        <button class="btn" id="reset">Restaurar o código original</button>
+        <span class="status" id="status">Carregando o Python no navegador…</span>
+      </div>
+      <h3>Saída</h3>
+      <div class="console" id="out">Execute o algoritmo para ver a recomendação.</div>
+      <div class="rec"><span class="tag">Recomendação</span><span class="pill none" id="recPill">aguardando execução</span></div>
+      <h3>Sua decisão</h3>
+      <div class="decide" id="decide">
+        <button class="act" data-d="action" disabled>Agir imediatamente</button>
+        <button class="wait" data-d="wait" disabled>Aguardar</button>
+        <button class="abort" data-d="abort" disabled>Abortar missão</button>
+      </div>
+      <p class="muted" id="decideHint">Os botões ficam ativos depois que o algoritmo for executado nesta missão.</p>
+      <div class="nav">
+        <button class="btn" id="prev">← Missão anterior</button>
+        <button class="btn" id="next">Próxima missão →</button>
+      </div>
+    </section>
+  </div>
+
+  <section class="card" id="allCard" hidden>
+    <h2>Seu algoritmo em todas as missões</h2>
+    <p class="muted" id="allNote"></p>
+    <div class="tablewrap"><table class="all" id="allTable"></table></div>
+  </section>
+
+  <section class="card" id="report" hidden></section>
+
+  <footer>
+    Atividade do livro <i>Tecnologia e Sociedade</i> (Ensino Médio, Volume 01). Missões criadas pelo professor Pedro D'Incao. O Python roda no seu próprio navegador, com o Pyodide: nada do que você escreve é enviado para um servidor. Os números das missões são estimativas criadas para a atividade e não reproduzem dados reais de nenhuma operação.
+  </footer>
+</div>
+
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="resTitle">
+  <div class="sheet" id="sheet"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+const MISSIONS = [{"title": "Missão 1 — Estrutura médica identificada como ameaça", "description": "Sensores e inteligência apontam atividade suspeita em um complexo urbano durante a noite. A leitura inicial indica presença de combatentes utilizando a estrutura como base.", "dramaticContext": "A região está sob intenso conflito. Nas últimas semanas, ataques coordenados partiram de áreas urbanas densas. O comando acredita que grupos armados estão usando estruturas civis como cobertura. A pressão é alta: se o local for realmente uma base, agir rapidamente pode salvar vidas. Mas há um problema — o prédio também apresenta sinais compatíveis com uma instalação médica em funcionamento.", "pressureToAct": "A inteligência sugere que combatentes estão usando o local como abrigo e centro de operação. Se for verdade, não agir pode permitir novos ataques.", "reasonToWait": "Há indícios visuais de atividade médica: fluxo de pessoas não armadas, padrão de iluminação típico de hospital e ausência clara de movimentação tática.", "reasonToAbort": "Se a estrutura for de fato médica, qualquer ataque representará uma violação grave, com alto risco de vítimas civis indefesas.", "confidence": 68, "civiliansRisk": 100, "timePressure": 82, "autonomy": 40, "strategicWeight": 88, "imageType": "medicalCompound", "action": {"outcomeText": "Você autorizou o ataque com base na leitura de ameaça potencial.", "note": "A decisão foi baseada em interpretação incompleta de dados sob pressão.", "responsibility": 15, "prudence": 5, "ethics": 0, "strategic": 60, "historicalReveal": "Um avião de ataque AC-130 dos Estados Unidos (não um drone) disparou contra o hospital de trauma da Médicos Sem Fronteiras. O ataque durou 29 minutos, segundo o Pentágono, ou mais de uma hora, segundo a MSF. Morreram 42 pessoas, entre pacientes e profissionais de saúde. O hospital estava numa lista de locais que não podiam ser atacados. A investigação militar concluiu que a tripulação confundiu o hospital com outro prédio, a cerca de 400 metros, por erro humano agravado por falhas de equipamento e de comunicação."}, "wait": {"outcomeText": "Você aguardou e solicitou confirmação adicional antes de qualquer ação.", "note": "Aguardar permitiu preservar uma estrutura potencialmente protegida e evitar um erro irreversível.", "responsibility": 90, "prudence": 95, "ethics": 100, "strategic": 50}, "abort": {"outcomeText": "Você abortou a missão ao considerar o risco extremo para civis e a possibilidade de erro.", "note": "A decisão priorizou completamente a proteção da vida, mesmo com custo operacional.", "responsibility": 85, "prudence": 92, "ethics": 100, "strategic": 30}, "kind": "real", "revealTitle": "Kunduz, Afeganistão — 3 de outubro de 2015"}, {"title": "Missão 2 — Agrupamento humano em zona de combate", "description": "Sensores detectam um grande agrupamento em área de combate ativa. A inteligência sugere que combatentes podem estar misturados entre civis em retirada.", "dramaticContext": "A região está no estágio final de um conflito intenso. Forças adversárias estão colapsando e há relatos de combatentes se misturando deliberadamente com populações civis para escapar. O comando acredita que líderes importantes podem estar entre o grupo. Ao mesmo tempo, a imagem mostra uma concentração humana grande demais para permitir distinção clara. Você não consegue separar ameaça de vulnerabilidade com precisão.", "pressureToAct": "Se combatentes estiverem ali, essa pode ser uma das últimas oportunidades de neutralizar lideranças antes que desapareçam completamente.", "reasonToWait": "A densidade humana é alta e a distinção entre combatentes e civis não é possível com os dados atuais.", "reasonToAbort": "Sem capacidade de distinguir, qualquer ação tratará civis e combatentes como o mesmo alvo — o que é moralmente problemático.", "confidence": 57, "civiliansRisk": 99, "timePressure": 78, "autonomy": 36, "strategicWeight": 88, "imageType": "borderNight", "action": {"outcomeText": "Você autorizou o ataque considerando que a presença de combatentes justificava a ação, mesmo sem distinção clara.", "note": "Quando a distinção entre civil e combatente desaparece, a legitimidade da decisão entra em colapso.", "responsibility": 18, "prudence": 6, "ethics": 2, "strategic": 64, "historicalReveal": "Na última batalha contra o Estado Islâmico, um caça dos EUA bombardeou uma multidão às margens do rio Eufrates. Operadores de drone que acompanhavam a cena tinham identificado mulheres e crianças. Segundo investigação do jornal The New York Times, publicada em 2021, até 64 dos cerca de 80 mortos podem ter sido civis. O Comando Central dos EUA confirmou os 80 mortos, mas afirmou que só 4 eram civis, e uma investigação militar de 2022 concluiu que o ataque não violou as leis da guerra. O caso ficou mais de dois anos sem reconhecimento público."}, "wait": {"outcomeText": "Você decidiu manter observação e buscar maior clareza antes de agir. A oportunidade de ataque imediato foi reduzida.", "note": "Esperar aqui é reconhecer que não saber quem é o alvo torna a decisão eticamente instável.", "responsibility": 88, "prudence": 93, "ethics": 95, "strategic": 52}, "abort": {"outcomeText": "Você abortou a missão por impossibilidade de distinguir civis de combatentes. Nenhuma ação foi realizada.", "note": "A decisão protege vidas, mas abandona completamente o objetivo estratégico.", "responsibility": 76, "prudence": 85, "ethics": 92, "strategic": 28}, "kind": "real", "revealTitle": "Baghuz, Síria — 18 de março de 2019"}, {"title": "Missão 3 — Massa humana em área de combate", "description": "Um agrupamento grande é detectado em zona de combate. A equipe teme que combatentes estejam misturados entre pessoas em fuga.", "dramaticContext": "O comando teme que, se o grupo se reorganizar e escapar, a frente adversária ganhe tempo e profundidade. Ao mesmo tempo, sensores mostram uma densidade humana incomum.", "pressureToAct": "Pode haver combatentes importantes usando o fluxo humano como cobertura.", "reasonToWait": "Há forte possibilidade de mulheres, crianças e famílias deslocadas no mesmo espaço.", "reasonToAbort": "Sem distinção minimamente segura entre ameaça e vulnerabilidade, a ação perde legitimidade.", "confidence": 58, "civiliansRisk": 97, "timePressure": 74, "autonomy": 38, "strategicWeight": 79, "imageType": "borderNight", "action": {"outcomeText": "Você tratou o agrupamento como ameaça consolidada e autorizou a ação.", "note": "Quando a distinção colapsa, a legitimidade da decisão colapsa junto.", "responsibility": 22, "prudence": 11, "ethics": 6, "strategic": 52, "historicalReveal": "Mesmo caso da Missão 2. Segundo o The New York Times, até 64 dos cerca de 80 mortos podem ter sido mulheres e crianças. Os militares dos EUA reconhecem 80 mortos, mas afirmam que só 4 eram civis. As duas versões continuam em disputa."}, "wait": {"outcomeText": "Você manteve observação e buscou melhor distinção de perfis antes de agir.", "note": "Aguardar aqui é respeitar a exigência moral de distinguir.", "responsibility": 86, "prudence": 92, "ethics": 93, "strategic": 55}, "abort": {"outcomeText": "Você abortou a missão por impossibilidade de distinguir combatentes e civis.", "note": "Defensável moralmente, mas fraco do ponto de vista operacional.", "responsibility": 74, "prudence": 83, "ethics": 90, "strategic": 26}, "kind": "real", "revealTitle": "Baghuz, Síria — 18 de março de 2019"}, {"title": "Missão 4 — Alvo perto de escola", "description": "Um alvo altamente perigoso está próximo de uma escola no horário de saída de estudantes.", "dramaticContext": "O comando insiste que aquele homem já participou da organização de múltiplos ataques e talvez não apareça em outra oportunidade. Ao mesmo tempo, crianças começam a atravessar o portão lateral.", "pressureToAct": "A janela é rara e o alvo é considerado altamente letal.", "reasonToWait": "Alguns minutos podem mudar radicalmente o cenário moral se os civis se afastarem.", "reasonToAbort": "O custo civil previsível pode ser alto demais para justificar uso letal imediato.", "confidence": 97, "civiliansRisk": 98, "timePressure": 94, "autonomy": 12, "strategicWeight": 95, "imageType": "schoolZone", "action": {"outcomeText": "Você decidiu neutralizar o alvo mesmo com civis muito próximos.", "note": "A decisão entrega um ganho tático, mas pode produzir derrota moral total.", "responsibility": 43, "prudence": 7, "ethics": 3, "strategic": 91, "historicalReveal": "A missão foi criada para a atividade, mas se apoia num padrão real: em áreas densamente povoadas do Afeganistão e do Iraque, a proximidade de escolas, casas e ruas movimentadas mudou muitas vezes a avaliação sobre se um ataque era aceitável."}, "wait": {"outcomeText": "Você aguardou a dispersão parcial da área escolar. O alvo escapou da janela imediata.", "note": "Alta ética com custo estratégico importante.", "responsibility": 82, "prudence": 91, "ethics": 97, "strategic": 38}, "abort": {"outcomeText": "Você abortou por risco humanitário extremo.", "note": "Proteção civil máxima, eficácia mínima.", "responsibility": 74, "prudence": 87, "ethics": 96, "strategic": 22}, "kind": "ficticio", "revealTitle": "Cenário fictício"}, {"title": "Missão 5 — Embarcação suspeita em corredor marítimo", "description": "Uma embarcação rápida segue rota ligada a tráfico e transporte de armas. Há indícios de homens armados, mas também de possível coação a bordo.", "dramaticContext": "Se aquela embarcação escapar, pode abastecer uma cadeia criminosa ou insurgente. O problema é que as imagens não permitem afirmar com segurança quem está ali por vontade própria.", "pressureToAct": "A rota é estratégica e o alvo é móvel; perder contato pode significar perder toda a operação.", "reasonToWait": "Há sinais de complexidade humana a bordo, possivelmente com pessoas coagidas.", "reasonToAbort": "Sem distinguir tripulação criminosa e vítimas, agir pode matar justamente quem não representa ameaça.", "confidence": 72, "civiliansRisk": 80, "timePressure": 78, "autonomy": 28, "strategicWeight": 85, "imageType": "coastalRadar", "action": {"outcomeText": "Você decidiu interromper a embarcação imediatamente.", "note": "A ambiguidade humana dentro do alvo fragiliza a legitimidade da decisão.", "responsibility": 54, "prudence": 29, "ethics": 24, "strategic": 82, "historicalReveal": "A missão foi criada para a atividade. Ela se apoia num padrão real das operações de interceptação: o alvo em movimento parece claro do ponto de vista militar, mas quem está dentro dele continua desconhecido."}, "wait": {"outcomeText": "Você aguardou e buscou nova leitura da embarcação antes de agir.", "note": "Boa escolha quando a principal questão é quem está dentro do alvo.", "responsibility": 84, "prudence": 87, "ethics": 88, "strategic": 59}, "abort": {"outcomeText": "Você abortou e a embarcação deixou a área sem intervenção.", "note": "Seguro no imediato, fraco operacionalmente.", "responsibility": 66, "prudence": 76, "ethics": 83, "strategic": 27}, "kind": "ficticio", "revealTitle": "Cenário fictício"}, {"title": "Missão 6 — Comboio ao lado de hospital", "description": "Um comboio suspeito cruza um corredor urbano ao lado de um hospital em operação plena.", "dramaticContext": "O comando acredita que o comboio pode transportar material explosivo ou liderança operacional. Mas qualquer erro aqui ameaça uma infraestrutura médica essencial.", "pressureToAct": "Se o comboio seguir adiante, pode desaparecer ou concretizar um ataque posterior.", "reasonToWait": "A área hospitalar torna qualquer erro muito mais grave que o normal.", "reasonToAbort": "Preservar uma estrutura médica pode ser moralmente superior ao ganho tático imediato.", "confidence": 81, "civiliansRisk": 97, "timePressure": 77, "autonomy": 18, "strategicWeight": 90, "imageType": "hospitalDistrict", "action": {"outcomeText": "Você autorizou a ação apesar da proximidade da infraestrutura médica.", "note": "A presença de hospital altera profundamente o patamar de justificação moral.", "responsibility": 39, "prudence": 8, "ethics": 4, "strategic": 84, "historicalReveal": "A missão foi criada para a atividade, mas se apoia num dado real: entre 2016 e 2019, a Organização Mundial da Saúde confirmou 494 ataques a estruturas de saúde na Síria, que mataram 470 pacientes e profissionais."}, "wait": {"outcomeText": "Você aguardou até que o comboio deixasse a zona hospitalar.", "note": "Protegeu uma infraestrutura civil crítica mesmo sob pressão.", "responsibility": 86, "prudence": 91, "ethics": 94, "strategic": 57}, "abort": {"outcomeText": "Você abortou para preservar totalmente o hospital.", "note": "Muito forte eticamente, quase nulo em resultado estratégico.", "responsibility": 72, "prudence": 82, "ethics": 92, "strategic": 20}, "kind": "ficticio", "revealTitle": "Cenário fictício"}, {"title": "Missão 7 — Centro médico sob suspeita", "description": "A inteligência sugere que um combatente importante ferido está sendo atendido em um centro médico de uma pequena cidade.", "dramaticContext": "A pressão operacional é enorme: o alvo estaria vulnerável, parado e difícil de evacuar. Mas o local é médico, marcado e cercado por pacientes, equipe de saúde e civis.", "pressureToAct": "A percepção é de que essa é uma das raras chances de atingir um operador importante em condição de vulnerabilidade.", "reasonToWait": "Mesmo que haja um combatente lá, a natureza médica do espaço eleva drasticamente o custo moral.", "reasonToAbort": "Uma instalação médica marcada exige nível extraordinário de justificação antes de qualquer ataque.", "confidence": 79, "civiliansRisk": 96, "timePressure": 69, "autonomy": 20, "strategicWeight": 88, "imageType": "medicalCompound", "action": {"outcomeText": "Você decidiu atacar mesmo diante da natureza médica do local.", "note": "A centralidade do alvo não elimina o problema da proteção médica.", "responsibility": 32, "prudence": 9, "ethics": 4, "strategic": 73, "historicalReveal": "Drones e aviões da Turquia bombardearam um centro médico na vila de Sikeniye, no norte do Iraque. A Turquia afirma que atacava combatentes ligados ao PKK, grupo que considera terrorista. Segundo as autoridades locais, morreram 8 pessoas: 4 profissionais de saúde e 4 combatentes que faziam a segurança do centro. O caso foi levado ao Conselho de Direitos Humanos da ONU."}, "wait": {"outcomeText": "Você aguardou, tentando confirmar melhor o uso do local antes de qualquer escalada.", "note": "Boa escolha quando o alvo potencial está dentro de espaço de proteção especial.", "responsibility": 84, "prudence": 90, "ethics": 95, "strategic": 49}, "abort": {"outcomeText": "Você abortou por incompatibilidade entre o meio escolhido e a natureza médica do local.", "note": "Protege o espaço médico, mas sacrifica a chance operacional.", "responsibility": 80, "prudence": 88, "ethics": 96, "strategic": 28}, "kind": "real", "revealTitle": "Sikeniye, Sinjar, Iraque — 17 de agosto de 2021"}, {"title": "Missão 8 — Porto com trabalhadores no entorno", "description": "Sensores indicam atividade anômala em um contêiner ligado a uma rede armada, mas o porto está cheio de trabalhadores encerrando o turno.", "dramaticContext": "Se o contêiner sair dali, a carga pode alimentar uma rede perigosa. Mas o porto, naquele minuto, é também um espaço civil comprimido e frágil.", "pressureToAct": "A carga pode desaparecer na cadeia logística e a oportunidade de interceptação é limitada.", "reasonToWait": "Tempo extra pode permitir evacuação parcial, isolamento do alvo e melhor identificação.", "reasonToAbort": "O risco coletivo é grande demais para justificar ação imediata em um ambiente lotado.", "confidence": 76, "civiliansRisk": 90, "timePressure": 61, "autonomy": 42, "strategicWeight": 82, "imageType": "portArea", "action": {"outcomeText": "Você decidiu intervir imediatamente em infraestrutura civil congestionada.", "note": "Foi uma escolha operacionalmente impaciente para um ambiente civil muito sensível.", "responsibility": 48, "prudence": 18, "ethics": 14, "strategic": 76, "historicalReveal": "A missão foi criada para a atividade. Ela se apoia num padrão real: ataques contra alvos logísticos em portos, estradas e depósitos costumam atingir trabalhadores que nada têm a ver com o conflito."}, "wait": {"outcomeText": "Você aguardou, reduziu risco coletivo e melhorou a leitura do alvo.", "note": "Equilibrou contenção e segurança.", "responsibility": 87, "prudence": 88, "ethics": 84, "strategic": 63}, "abort": {"outcomeText": "Você abortou e a carga suspeita permaneceu sem resposta imediata.", "note": "Seguro, porém pouco resolutivo.", "responsibility": 64, "prudence": 74, "ethics": 81, "strategic": 31}, "kind": "ficticio", "revealTitle": "Cenário fictício"}, {"title": "Missão 9 — Falso positivo algorítmico", "description": "Um sistema de IA classifica atividade industrial como provável sabotagem. Analistas humanos pedem cautela e sugerem manutenção rotineira mal interpretada.", "dramaticContext": "O comando teme que um ataque a instalações críticas paralise operações importantes. Mas o sistema pode estar enxergando ameaça onde existe apenas ruído operacional.", "pressureToAct": "A janela é curta e a leitura automatizada parece apontar um risco crescente.", "reasonToWait": "Especialistas humanos contestam o modelo e pedem validação adicional.", "reasonToAbort": "Sem consistência mínima entre automação e interpretação humana, a decisão letal fica intelectualmente frágil.", "confidence": 60, "civiliansRisk": 71, "timePressure": 65, "autonomy": 86, "strategicWeight": 70, "imageType": "industrialArea", "action": {"outcomeText": "Você agiu cedo demais com base em uma classificação automatizada discutível.", "note": "O erro aqui nasce do excesso de confiança no sistema.", "responsibility": 29, "prudence": 24, "ethics": 19, "strategic": 41, "historicalReveal": "O cenário da missão é fictício, mas o erro de identificação é real. Um ataque de drone dos EUA mirava um líder da al-Qaeda. Um ano depois, em maio de 2024, o próprio Comando Central dos EUA reconheceu que errou o alvo: o homem morto era Lutfi Hasan Masto, um civil que cuidava de suas ovelhas. A investigação concluiu que o ataque seguiu as leis da guerra, mas apontou problemas que poderiam ser corrigidos."}, "wait": {"outcomeText": "Você aguardou validação técnica e reduziu a chance de confundir manutenção com ameaça.", "note": "Boa decisão quando o problema é a confiabilidade do modelo.", "responsibility": 91, "prudence": 90, "ethics": 90, "strategic": 71}, "abort": {"outcomeText": "Você abortou a missão e evitou escalada baseada em leitura duvidosa.", "note": "Mais segura que agir, menos robusta que investigar.", "responsibility": 70, "prudence": 79, "ethics": 80, "strategic": 41}, "kind": "real", "revealTitle": "Noroeste da Síria — 3 de maio de 2023"}, {"title": "Missão 10 — Veículo familiar confundido com ameaça iminente", "description": "Após um atentado recente, um veículo entra em um pátio residencial e pessoas descarregam volumes. A equipe teme que estejam preparando um novo ataque.", "dramaticContext": "O ambiente político e militar está em estado de choque. Há expectativa de novo ataque a qualquer momento. Os analistas veem no comportamento do carro um padrão que pode significar preparação de explosivos.", "pressureToAct": "A crença é que um novo atentado pode acontecer em questão de minutos.", "reasonToWait": "Os objetos descarregados não podem ser identificados com segurança, e crianças circulam no local.", "reasonToAbort": "Sem confirmação visual robusta, a ação letal em ambiente familiar é moralmente insustentável.", "confidence": 74, "civiliansRisk": 98, "timePressure": 94, "autonomy": 35, "strategicWeight": 86, "imageType": "infraredUrban", "action": {"outcomeText": "Você autorizou a ação com base na hipótese de ameaça iminente.", "note": "Pressão temporal e interpretação enviesada podem transformar suspeita em tragédia.", "responsibility": 28, "prudence": 8, "ethics": 3, "strategic": 52, "historicalReveal": "Três dias depois de um atentado no aeroporto de Cabul, um drone dos EUA atacou um carro estacionado no pátio de uma casa. Os militares disseram ter evitado um novo ataque do Estado Islâmico. Semanas depois, o Pentágono admitiu o erro: o motorista, Zemari Ahmadi, trabalhava para uma organização humanitária, e o ataque matou 10 civis, entre eles 7 crianças. Nenhum militar foi punido."}, "wait": {"outcomeText": "Você manteve vigilância e pediu confirmação adicional antes de agir.", "note": "Aguardar aqui significa recusar que suspeita seja tratada como prova.", "responsibility": 86, "prudence": 92, "ethics": 95, "strategic": 46}, "abort": {"outcomeText": "Você abortou a missão por incerteza crítica e risco civil extremo.", "note": "Abortar protege vidas imediatas, mas transfere o problema estratégico.", "responsibility": 78, "prudence": 88, "ethics": 94, "strategic": 24}, "kind": "real", "revealTitle": "Cabul, Afeganistão — 29 de agosto de 2021"}, {"title": "Missão 11 — Comboio misto no deserto", "description": "Veículos em rota no deserto parecem misturar possível escolta armada e famílias deslocadas.", "dramaticContext": "O comando teme que o grupo armado esteja usando o deslocamento humano como cobertura. Ao mesmo tempo, qualquer leitura apressada pode transformar civis em extensão automática da ameaça.", "pressureToAct": "Se parte do comboio for de fato armada, a janela de interceptação é curta.", "reasonToWait": "Há sinais de presença de famílias ou deslocados entre os veículos.", "reasonToAbort": "Sem capacidade mínima de distinção, agir significa colapsar ameaça e vulnerabilidade numa mesma categoria.", "confidence": 66, "civiliansRisk": 91, "timePressure": 73, "autonomy": 30, "strategicWeight": 85, "imageType": "convoyDesert", "action": {"outcomeText": "Você tratou o comboio como ameaça predominante e autorizou a ação.", "note": "A decisão ignorou que o problema central era distinguir, não apenas reagir.", "responsibility": 40, "prudence": 19, "ethics": 14, "strategic": 66, "historicalReveal": "A missão foi criada para a atividade. Ela se apoia num padrão real dos conflitos no Iraque e na Síria, em que comboios e grupos em fuga misturavam famílias deslocadas e pessoas suspeitas de serem combatentes."}, "wait": {"outcomeText": "Você aguardou para distinguir melhor perfis dentro do comboio.", "note": "Boa decisão quando a moralidade depende da distinção.", "responsibility": 86, "prudence": 90, "ethics": 91, "strategic": 60}, "abort": {"outcomeText": "Você abortou para evitar colapsar população vulnerável e ameaça num mesmo alvo.", "note": "Boa proteção civil, baixa resolução operacional.", "responsibility": 71, "prudence": 81, "ethics": 86, "strategic": 25}, "kind": "ficticio", "revealTitle": "Cenário fictício"}, {"title": "Missão 12 — Suspeito em edifício com clínica e famílias", "description": "Interceptações indicam que um articulador de ataques pode estar em um prédio misto com apartamentos, clínica no térreo e circulação constante de moradores.", "dramaticContext": "O suspeito é visto como responsável por mortes anteriores e talvez não apareça de novo. Mas o ambiente é civil por definição: pacientes entram e saem, famílias ocupam janelas e o interior não está visualmente confirmado.", "pressureToAct": "A equipe teme perder uma janela rara de neutralização de um alvo importante.", "reasonToWait": "Não há confirmação visual direta do interior e o prédio é densamente ocupado por civis.", "reasonToAbort": "O ambiente é complexo demais para uma solução remota letal imediata sem dano previsível.", "confidence": 82, "civiliansRisk": 97, "timePressure": 72, "autonomy": 22, "strategicWeight": 92, "imageType": "apartmentBlock", "action": {"outcomeText": "Você decidiu atingir a estrutura suspeita mesmo em ambiente civil densamente ocupado.", "note": "Alta relevância do alvo não elimina a obrigação de distinguir com rigor.", "responsibility": 36, "prudence": 9, "ethics": 4, "strategic": 68, "historicalReveal": "A missão foi criada para a atividade. Ela se apoia em padrões documentados no Iraque e na Síria, onde ataques a prédios residenciais e a estruturas de saúde mataram civis que estavam no lugar errado na hora errada."}, "wait": {"outcomeText": "Você manteve vigilância e tentou confirmação adicional antes de qualquer ação.", "note": "Esperar aqui é admitir que um alvo valioso não justifica qualquer método.", "responsibility": 84, "prudence": 91, "ethics": 96, "strategic": 49}, "abort": {"outcomeText": "Você abortou e repassou o caso a outra forma de operação menos dependente de ação remota imediata.", "note": "Preserva o espaço civil, mas reduz a chance de resolução imediata.", "responsibility": 79, "prudence": 87, "ethics": 93, "strategic": 31}, "kind": "ficticio", "revealTitle": "Cenário fictício"}];
+
+const DEFAULT_CODE = `# ===== O ALGORITMO DE APOIO À DECISÃO =====
+# Os dados da missão chegam prontos, de 0 a 100:
+#   confiabilidade, risco_civis, urgencia, dependencia_automacao, importancia
+
+# ===== PESOS (MUDE AQUI; a soma deve dar 1) =====
+PESO_CONFIABILIDADE = 0.3
+PESO_URGENCIA       = 0.3
+PESO_IMPORTANCIA    = 0.3
+PESO_VIDA_CIVIL     = 0.1
+PESO_VERIFICACAO    = 0.0
+
+# ===== LIMITES (MUDE AQUI) =====
+RISCO_MAXIMO    = 100   # acima deste risco para civis, o sistema aborta (100 = trava desligada)
+LIMIAR_AGIR     = 60    # índice mínimo para recomendar AGIR
+LIMIAR_AGUARDAR = 40    # abaixo deste índice, o sistema recomenda ABORTAR
+
+# ===== A REGRA =====
+seguranca_civis = 100 - risco_civis
+verificacao_humana = 100 - dependencia_automacao
+
+indice = (confiabilidade * PESO_CONFIABILIDADE
+          + urgencia * PESO_URGENCIA
+          + importancia * PESO_IMPORTANCIA
+          + seguranca_civis * PESO_VIDA_CIVIL
+          + verificacao_humana * PESO_VERIFICACAO)
+
+if risco_civis > RISCO_MAXIMO:
+    decisao = "ABORTAR"
+elif indice >= LIMIAR_AGIR:
+    decisao = "AGIR"
+elif indice >= LIMIAR_AGUARDAR:
+    decisao = "AGUARDAR"
+else:
+    decisao = "ABORTAR"
+
+# ===== O RESULTADO =====
+soma = PESO_CONFIABILIDADE + PESO_URGENCIA + PESO_IMPORTANCIA + PESO_VIDA_CIVIL + PESO_VERIFICACAO
+print("Soma dos pesos:", round(soma, 2))
+print("Índice:", round(indice, 1), " (agir a partir de", LIMIAR_AGIR, ")")
+print("RECOMENDAÇÃO:", decisao)
+`;
+
+const DECISIONS = {
+  action: { label: "Agir imediatamente", py: "AGIR", cls: "act" },
+  wait: { label: "Aguardar", py: "AGUARDAR", cls: "wait" },
+  abort: { label: "Abortar missão", py: "ABORTAR", cls: "abort" }
+};
+const PY_TO_KEY = { AGIR: "action", AGUARDAR: "wait", ABORTAR: "abort" };
+
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+
+let state = {
+  index: store.get("de.index", 0),
+  results: store.get("de.results", {}),
+  recs: {}
+};
+let pyodide = null;
+
+const $ = (id) => document.getElementById(id);
+const codeEl = $("code");
+codeEl.value = store.get("de.code", DEFAULT_CODE);
+
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+/* ---------- sensor feed ---------- */
+const FEEDS = {
+  infraredUrban:   { label: "IR / URBANO",    grad: ["#000", "rgba(128,0,128,.6)", "rgba(255,165,0,.7)"] },
+  infraredRoad:    { label: "IR / ESTRADA",   grad: ["#000", "rgba(128,128,128,.6)", "rgba(255,165,0,.8)"] },
+  coastalRadar:    { label: "RADAR / COSTA",  grad: ["#000", "rgba(0,90,255,.45)", "rgba(0,200,0,.2)"] },
+  schoolZone:      { label: "IR / ESCOLA",    grad: ["#000", "rgba(255,0,0,.35)", "rgba(255,220,0,.35)"] },
+  borderNight:     { label: "NOTURNO / CAMPO", grad: ["#000", "rgba(75,0,130,.5)", "rgba(128,128,128,.4)"] },
+  industrialArea:  { label: "TÉRMICO / IND",  grad: ["#000", "rgba(128,128,128,.7)", "rgba(0,255,255,.35)"] },
+  hospitalDistrict:{ label: "IR / HOSPITAL",  grad: ["#000", "rgba(128,128,128,.55)", "rgba(255,0,0,.25)"] },
+  portArea:        { label: "SAT / PORTO",    grad: ["#000", "rgba(0,90,255,.4)", "rgba(128,128,128,.5)"] },
+  convoyDesert:    { label: "IR / DESERTO",   grad: ["#000", "rgba(150,90,40,.5)", "rgba(255,220,0,.45)"] },
+  apartmentBlock:  { label: "IR / PRÉDIO",    grad: ["#000", "rgba(128,128,128,.55)", "rgba(255,0,0,.22)"] },
+  medicalCompound: { label: "IR / MÉDICO",    grad: ["#000", "rgba(255,0,0,.30)", "rgba(255,255,255,.12)"] },
+  cityCourtyard:   { label: "IR / PÁTIO",     grad: ["#000", "rgba(128,128,128,.55)", "rgba(255,165,0,.22)"] }
+};
+const HEAT = { orange: "#ffa500", yellow: "#ffd60a", red: "#ff3b30", cyan: "#32d2f5" };
+
+function drawFeed(canvas, type) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  const c = canvas.getContext("2d");
+  c.scale(dpr, dpr);
+  const f = FEEDS[type] || FEEDS.infraredUrban;
+  const g = c.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, f.grad[0]); g.addColorStop(.5, f.grad[1]); g.addColorStop(1, f.grad[2]);
+  c.fillStyle = g; c.fillRect(0, 0, w, h);
+  const rect = (x, y, rw, rh, a) => { c.fillStyle = `rgba(255,255,255,${a})`; c.fillRect(x - rw / 2, y - rh / 2, rw, rh); };
+  const dot = (x, y, s, col) => { c.save(); c.filter = "blur(1px)"; c.fillStyle = HEAT[col] || col; c.beginPath(); c.arc(x, y, s / 2, 0, Math.PI * 2); c.fill(); c.restore(); };
+  const stroke = (a, lw, fn, dash) => { c.save(); c.strokeStyle = `rgba(255,255,255,${a})`; c.lineWidth = lw; if (dash) c.setLineDash(dash); c.beginPath(); fn(); c.stroke(); c.restore(); };
+  switch (type) {
+    case "infraredUrban":
+      for (let i = 0; i < 6; i++) rect(40 + i * (w / 7), 55 + (i % 2) * 48, w * .14, h * (.18 + (i % 3) * .06), .07);
+      dot(w * .42, h * .58, 18, "orange"); dot(w * .47, h * .62, 14, "yellow"); dot(w * .62, h * .46, 16, "red"); break;
+    case "infraredRoad":
+      stroke(.18, 18, () => { c.moveTo(w * .1, h * .85); c.bezierCurveTo(w * .3, h * .65, w * .6, h * .25, w * .88, h * .2); });
+      dot(w * .52, h * .48, 20, "orange"); dot(w * .58, h * .52, 10, "yellow"); dot(w * .38, h * .65, 12, "red"); break;
+    case "coastalRadar":
+      stroke(.2, 4, () => { c.moveTo(w * .2, 0); c.lineTo(w * .38, h); });
+      [.18, .32, .46, .6].forEach((fr) => { c.save(); c.strokeStyle = "rgba(0,200,0,.25)"; c.beginPath(); c.arc(w / 2, h / 2, w * fr / 2, 0, Math.PI * 2); c.stroke(); c.restore(); });
+      dot(w * .67, h * .58, 16, "orange"); dot(w * .74, h * .64, 8, "yellow"); break;
+    case "schoolZone":
+      rect(w * .68, h * .42, w * .28, h * .22, .08); rect(w * .23, h * .52, w * .12, h * .55, .08);
+      for (let i = 0; i < 6; i++) dot(w * (.58 + i * .035), h * .72, 7, "yellow");
+      dot(w * .47, h * .58, 15, "red"); break;
+    case "borderNight":
+      stroke(.25, 2, () => { c.moveTo(w * .1, h * .4); c.lineTo(w * .9, h * .55); }, [8, 6]);
+      for (let i = 0; i < 9; i++) dot(w * (.22 + i * .055), h * (.58 + (i % 2) * .05), 9, i % 3 === 0 ? "yellow" : "orange"); break;
+    case "industrialArea":
+      for (let i = 0; i < 4; i++) rect(w * (.22 + (i % 2) * .24), h * (.32 + Math.floor(i / 2) * .28), w * .18, h * .18, .07);
+      dot(w * .65, h * .42, 20, "cyan"); dot(w * .68, h * .46, 12, "orange"); break;
+    case "hospitalDistrict":
+      rect(w * .66, h * .42, w * .26, h * .3, .08);
+      stroke(.18, 14, () => { c.moveTo(w * .18, h * .8); c.bezierCurveTo(w * .32, h * .7, w * .62, h * .38, w * .85, h * .25); });
+      dot(w * .52, h * .54, 16, "red"); break;
+    case "portArea":
+      c.fillStyle = "rgba(0,90,255,.22)"; c.fillRect(0, h * .72, w, h * .3);
+      for (let i = 0; i < 6; i++) rect(w * (.18 + i * .1), h * (.45 + (i % 2) * .08), 34, 22, .07);
+      dot(w * .57, h * .47, 15, "orange"); break;
+    case "convoyDesert":
+      stroke(.18, 14, () => { c.moveTo(w * .05, h * .7); c.lineTo(w * .9, h * .32); });
+      for (let i = 0; i < 5; i++) dot(w * (.25 + i * .1), h * (.58 - i * .045), 12, i < 2 ? "yellow" : "orange"); break;
+    case "apartmentBlock":
+      rect(w * .5, h * .47, w * .34, h * .68, .09);
+      for (let r = 0; r < 6; r++) for (let k = 0; k < 3; k++) rect(w * .42 + k * 28, h * .22 + r * 24, 18, 12, .08);
+      dot(w * .52, h * .49, 15, "red"); dot(w * .47, h * .63, 9, "yellow"); dot(w * .58, h * .32, 8, "orange"); break;
+    case "medicalCompound":
+      rect(w * .52, h * .48, w * .32, h * .28, .09);
+      stroke(.55, 4, () => { c.moveTo(w * .47, h * .4); c.lineTo(w * .57, h * .4); c.moveTo(w * .52, h * .35); c.lineTo(w * .52, h * .45); });
+      dot(w * .68, h * .52, 14, "red"); dot(w * .36, h * .58, 10, "yellow"); break;
+    default:
+      rect(w * .5, h * .48, w * .62, h * .52, .08);
+      dot(w * .34, h * .42, 11, "yellow"); dot(w * .66, h * .6, 12, "orange"); dot(w * .52, h * .48, 14, "red");
+  }
+  c.strokeStyle = "rgba(255,255,255,.15)"; c.lineWidth = .6; c.beginPath();
+  for (let i = 1; i < 6; i++) { c.moveTo(0, h * i / 6); c.lineTo(w, h * i / 6); }
+  for (let j = 1; j < 8; j++) { c.moveTo(w * j / 8, 0); c.lineTo(w * j / 8, h); }
+  c.stroke();
+  const cx = w / 2, cy = h / 2;
+  c.strokeStyle = "rgba(255,255,255,.45)"; c.lineWidth = 1; c.beginPath();
+  c.moveTo(cx - 40, cy); c.lineTo(cx + 40, cy); c.moveTo(cx, cy - 40); c.lineTo(cx, cy + 40); c.stroke();
+  c.beginPath(); c.arc(cx, cy, 22, 0, Math.PI * 2); c.stroke();
+  c.fillStyle = "#fff"; c.font = "12px 'IBM Plex Mono', monospace";
+  c.fillText("TRANSMISSÃO AO VIVO", 10, 20);
+  const lw = c.measureText(f.label).width; c.fillText(f.label, w - lw - 10, 20);
+  c.fillStyle = "rgba(255,255,255,.85)"; c.fillText("ALT 380m", 10, h - 10);
+  const sw = c.measureText("SINAL OK").width; c.fillText("SINAL OK", w - sw - 10, h - 10);
+}
+
+/* ---------- mission rendering ---------- */
+const METRICS = [
+  ["confidence", "Confiabilidade dos dados", "confiabilidade", "var(--ok)"],
+  ["civiliansRisk", "Risco para civis", "risco_civis", "#f08a3c"],
+  ["timePressure", "Pressão de tempo", "urgencia", "var(--wait)"],
+  ["autonomy", "Dependência de automação", "dependencia_automacao", "#32d2f5"],
+  ["strategicWeight", "Peso estratégico", "importancia", "var(--act)"]
+];
+
+function renderProgress() {
+  const p = $("progress");
+  p.innerHTML = MISSIONS.map((m, i) => {
+    const r = state.results[i];
+    const cls = r ? "done-" + r.decision : "";
+    return `<button class="dot ${cls} ${i === state.index ? "current" : ""}" data-i="${i}" aria-label="Missão ${i + 1}${r ? ", respondida" : ""}">${i + 1}</button>`;
+  }).join("");
+  p.querySelectorAll("button").forEach((b) => b.addEventListener("click", () => goTo(+b.dataset.i)));
+}
+
+function renderMission() {
+  const m = MISSIONS[state.index];
+  const title = m.title.replace(/^Missão \d+ — /, "");
+  $("mission").innerHTML = `
+    <h3>Missão ${state.index + 1} de ${MISSIONS.length}</h3>
+    <canvas class="feed" id="feed" role="img" aria-label="Imagem simulada do sensor do drone"></canvas>
+    <h2>${esc(title)}</h2>
+    <p>${esc(m.description)}</p>
+    <p class="muted">${esc(m.dramaticContext)}</p>
+    <h3>Dados da missão</h3>
+    <div class="metrics">${METRICS.map(([k, label, py, col]) => `
+      <div class="metric"><div class="row"><span>${label} <code>${py}</code></span><span>${m[k]}</span></div>
+      <div class="bar"><i style="width:${m[k]}%;background:${col}"></i></div></div>`).join("")}
+    </div>
+    <h3>Argumentos na sala</h3>
+    <div class="reasons">
+      <div class="reason act"><b>Por que agir agora?</b>${esc(m.pressureToAct)}</div>
+      <div class="reason wait"><b>Por que esperar?</b>${esc(m.reasonToWait)}</div>
+      <div class="reason abort"><b>Por que abortar?</b>${esc(m.reasonToAbort)}</div>
+    </div>`;
+  drawFeed($("feed"), m.imageType);
+  const rec = state.recs[state.index];
+  setRec(rec || null);
+  if (!rec) $("out").textContent = "Execute o algoritmo para ver a recomendação.";
+  $("out").classList.remove("err");
+  $("prev").disabled = state.index === 0;
+  $("next").disabled = state.index === MISSIONS.length - 1;
+  renderProgress();
+}
+
+function setRec(rec) {
+  const pill = $("recPill");
+  const buttons = $("decide").querySelectorAll("button");
+  buttons.forEach((b) => { b.classList.remove("recommended"); b.disabled = !rec; });
+  if (!rec) { pill.className = "pill none"; pill.textContent = "aguardando execução"; $("decideHint").hidden = false; return; }
+  pill.className = "pill " + rec; pill.textContent = rec;
+  $("decideHint").hidden = true;
+  const key = PY_TO_KEY[rec];
+  buttons.forEach((b) => { if (b.dataset.d === key) b.classList.add("recommended"); });
+}
+
+function goTo(i) {
+  state.index = Math.max(0, Math.min(MISSIONS.length - 1, i));
+  store.set("de.index", state.index);
+  renderMission();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+/* ---------- python ---------- */
+function missionVars(m) {
+  return { confiabilidade: m.confidence, risco_civis: m.civiliansRisk, urgencia: m.timePressure, dependencia_automacao: m.autonomy, importancia: m.strategicWeight };
+}
+
+function runPython(m, capture) {
+  const lines = [];
+  pyodide.setStdout({ batched: (s) => lines.push(s) });
+  pyodide.setStderr({ batched: (s) => lines.push(s) });
+  const ns = pyodide.toPy(missionVars(m));
+  try {
+    pyodide.runPython(codeEl.value, { globals: ns });
+    const d = ns.get("decisao");
+    const idx = ns.get("indice");
+    const decisao = typeof d === "string" ? d.trim().toUpperCase() : null;
+    if (!PY_TO_KEY[decisao]) throw new Error('A variável decisao precisa terminar com "AGIR", "AGUARDAR" ou "ABORTAR".');
+    return { ok: true, decisao, indice: typeof idx === "number" ? idx : null, out: lines.join("\n") };
+  } catch (e) {
+    let msg = String(e.message || e);
+    const tail = msg.trim().split("\n").slice(-3).join("\n");
+    return { ok: false, out: lines.join("\n"), err: friendly(tail) };
+  } finally {
+    ns.destroy();
+  }
+}
+
+function friendly(msg) {
+  let hint = "";
+  if (/IndentationError/.test(msg)) hint = "\nDica: em Python, os espaços no começo da linha fazem parte da regra. Confira o recuo.";
+  else if (/SyntaxError/.test(msg)) hint = "\nDica: falta ou sobra algum sinal (aspas, parênteses, dois-pontos) na linha indicada.";
+  else if (/NameError/.test(msg)) hint = "\nDica: o código usa um nome que não existe. Confira se ele foi escrito igualzinho, com as mesmas maiúsculas.";
+  return msg + hint;
+}
+
+function onRun() {
+  if (!pyodide) return;
+  store.set("de.code", codeEl.value);
+  const m = MISSIONS[state.index];
+  const r = runPython(m);
+  const out = $("out");
+  if (r.ok) {
+    out.classList.remove("err");
+    out.textContent = r.out || "(o código não imprimiu nada)";
+    state.recs[state.index] = r.decisao;
+    setRec(r.decisao);
+  } else {
+    out.classList.add("err");
+    out.textContent = (r.out ? r.out + "\n" : "") + "Erro:\n" + r.err;
+    delete state.recs[state.index];
+    setRec(null);
+  }
+}
+
+function onRunAll() {
+  if (!pyodide) return;
+  store.set("de.code", codeEl.value);
+  const rows = [];
+  let counts = { AGIR: 0, AGUARDAR: 0, ABORTAR: 0 }, errors = 0;
+  MISSIONS.forEach((m, i) => {
+    const r = runPython(m);
+    if (r.ok) { counts[r.decisao]++; rows.push([i, m, r]); state.recs[i] = r.decisao; }
+    else { errors++; rows.push([i, m, r]); }
+  });
+  $("allCard").hidden = false;
+  $("allNote").textContent = errors
+    ? `O código deu erro em ${errors} missão(ões). Corrija e teste de novo.`
+    : `Com as regras atuais, o algoritmo recomenda AGIR em ${counts.AGIR}, AGUARDAR em ${counts.AGUARDAR} e ABORTAR em ${counts.ABORTAR} das ${MISSIONS.length} missões.`;
+  $("allTable").innerHTML = `<thead><tr><th>Missão</th><th>Risco para civis</th><th>Índice</th><th>Recomendação</th></tr></thead><tbody>${rows.map(([i, m, r]) => `
+    <tr><td>${i + 1}. ${esc(m.title.replace(/^Missão \d+ — /, ""))}</td><td class="num">${m.civiliansRisk}</td>
+    <td class="num">${r.ok && r.indice !== null ? r.indice.toFixed(1) : "–"}</td>
+    <td>${r.ok ? `<span class="pill ${r.decisao}">${r.decisao}</span>` : '<span class="muted">erro</span>'}</td></tr>`).join("")}</tbody>`;
+  setRec(state.recs[state.index] || null);
+  $("allCard").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/* ---------- decision & outcome ---------- */
+const BARS = [["responsibility", "Responsabilidade", "var(--ok)"], ["prudence", "Prudência", "var(--wait)"], ["ethics", "Ética", "#7fd6c2"], ["strategic", "Estratégia", "var(--act)"]];
+const PROMPTS = [
+  "Por que você escolheu essa decisão?",
+  "O que pesou mais: risco para civis, urgência, confiabilidade dos dados, automação ou peso estratégico?",
+  "Você seguiu o algoritmo? Se sim, quem é o responsável pelo resultado: você, o algoritmo ou quem escreveu os pesos?",
+  "O que sua decisão sacrifica ou coloca em risco?",
+  "Esperar seria prudência ou omissão neste caso?",
+  "Que peso o algoritmo dava à vida dos civis? O que mudaria se esse peso fosse maior?"
+];
+
+function decide(key) {
+  const m = MISSIONS[state.index];
+  const rec = state.recs[state.index];
+  const followed = rec && PY_TO_KEY[rec] === key;
+  state.results[state.index] = { decision: key, followed: !!followed, rec };
+  store.set("de.results", state.results);
+  const o = m[key];
+  const showReveal = key === "action";
+  $("sheet").innerHTML = `
+    <div class="tag">Missão ${state.index + 1} · resultado</div>
+    <h2 id="resTitle">${esc(DECISIONS[key].label)}</h2>
+    <div class="followed">${rec ? (followed
+      ? `Você <b>seguiu</b> a recomendação do algoritmo (<span class="pill ${rec}">${rec}</span>).`
+      : `Você <b>contrariou</b> a recomendação do algoritmo, que era <span class="pill ${rec}">${rec}</span>.`) : ""}</div>
+    <p>${esc(o.outcomeText)}</p>
+    ${showReveal ? `<div class="reveal ${m.kind}"><span class="tag">${m.kind === "real" ? "O que aconteceu de verdade" : "Sobre esta missão"}</span><b>${esc(m.revealTitle)}</b><p>${esc(o.historicalReveal)}</p></div>` : ""}
+    <div class="metrics">${BARS.map(([k, label, col]) => `
+      <div class="metric"><div class="row"><span>${label}</span><span>${o[k]}%</span></div>
+      <div class="bar"><i style="width:${o[k]}%;background:${col}"></i></div></div>`).join("")}</div>
+    <p class="muted">${esc(o.note)}</p>
+    <p class="muted" style="font-size:.85rem">As notas de responsabilidade, prudência, ética e estratégia são a avaliação proposta pelo professor para esta atividade. Você pode discordar delas e argumentar.</p>
+    <div><div class="tag" style="margin-bottom:6px">Anote no livro</div><ol class="prompts">${PROMPTS.map((p) => `<li>${esc(p)}</li>`).join("")}</ol></div>
+    <div class="toolbar"><button class="btn" id="closeSheet">Voltar à missão</button>${state.index < MISSIONS.length - 1 ? '<button class="btn primary" id="nextSheet">Próxima missão →</button>' : ""}</div>`;
+  $("overlay").classList.add("open");
+  $("closeSheet").focus();
+  $("closeSheet").addEventListener("click", closeSheet);
+  const ns = $("nextSheet"); if (ns) ns.addEventListener("click", () => { closeSheet(); goTo(state.index + 1); });
+  renderProgress();
+  renderReport();
+}
+function closeSheet() { $("overlay").classList.remove("open"); }
+$("overlay").addEventListener("click", (e) => { if (e.target.id === "overlay") closeSheet(); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeSheet(); });
+
+function profileText(e, s) {
+  if (e >= 80 && s < 50) return "Perfil: forte proteção ética, mas com menor agressividade estratégica.";
+  if (s >= 75 && e < 45) return "Perfil: foco estratégico elevado, com baixa proteção civil.";
+  if (e >= 70 && s >= 55) return "Perfil: equilíbrio difícil entre prudência, ética e estratégia.";
+  return "Perfil: decisões tensas e ambíguas, como ocorre em muitos cenários reais.";
+}
+
+function renderReport() {
+  const done = Object.entries(state.results);
+  const card = $("report");
+  if (done.length < MISSIONS.length) { card.hidden = true; return; }
+  const avg = (k) => Math.round(done.reduce((a, [i, r]) => a + MISSIONS[i][r.decision][k], 0) / done.length);
+  const followed = done.filter(([, r]) => r.followed).length;
+  const attacks = done.filter(([, r]) => r.decision === "action").length;
+  const e = avg("ethics"), s = avg("strategic");
+  card.hidden = false;
+  card.innerHTML = `
+    <h2>Relatório final</h2>
+    <p>${profileText(e, s)}</p>
+    <div class="summary">
+      <div class="tile"><b>${followed}/${MISSIONS.length}</b><span>vezes em que você seguiu o algoritmo</span></div>
+      <div class="tile"><b>${attacks}/${MISSIONS.length}</b><span>missões em que você decidiu agir</span></div>
+    </div>
+    <div class="metrics">${BARS.map(([k, label, col]) => { const v = avg(k); return `
+      <div class="metric"><div class="row"><span>${label} média</span><span>${v}%</span></div>
+      <div class="bar"><i style="width:${v}%;background:${col}"></i></div></div>`; }).join("")}</div>
+    <p><b>Próximo passo.</b> Volte ao código. Aumente o <code>PESO_VIDA_CIVIL</code>, ligue a trava baixando o <code>RISCO_MAXIMO</code> ou dê peso à <code>verificacao_humana</code>. Depois clique em <b>Testar em todas as missões</b> e compare as recomendações. Quantos ataques o algoritmo deixa de recomendar? O que se perde e o que se ganha?</p>
+    <div class="toolbar"><button class="btn" id="restart">Recomeçar as missões</button></div>`;
+  $("restart").addEventListener("click", () => { state.results = {}; store.set("de.results", {}); card.hidden = true; goTo(0); });
+}
+
+/* ---------- wiring ---------- */
+$("decide").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => decide(b.dataset.d)));
+$("prev").addEventListener("click", () => goTo(state.index - 1));
+$("next").addEventListener("click", () => goTo(state.index + 1));
+$("run").addEventListener("click", onRun);
+$("runAll").addEventListener("click", onRunAll);
+$("reset").addEventListener("click", () => { codeEl.value = DEFAULT_CODE; store.set("de.code", DEFAULT_CODE); state.recs = {}; setRec(null); $("out").textContent = "Código original restaurado. Execute de novo."; });
+codeEl.addEventListener("keydown", (e) => {
+  if (e.key === "Tab") { e.preventDefault(); const s = codeEl.selectionStart, en = codeEl.selectionEnd; codeEl.setRangeText("    ", s, en, "end"); }
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onRun(); }
+});
+codeEl.addEventListener("input", () => { if (state.recs[state.index]) { delete state.recs[state.index]; setRec(null); $("out").textContent = "O código mudou. Execute de novo para atualizar a recomendação."; } });
+window.addEventListener("resize", () => { const f = $("feed"); if (f) drawFeed(f, MISSIONS[state.index].imageType); });
+
+renderMission();
+renderReport();
+
+(async () => {
+  try {
+    if (typeof loadPyodide !== "function") throw new Error("sem pyodide");
+    pyodide = await loadPyodide();
+    $("status").textContent = "Python pronto. Dica: Ctrl/Cmd + Enter executa.";
+    $("run").disabled = false; $("runAll").disabled = false;
+  } catch (e) {
+    $("status").textContent = "Não foi possível carregar o Python. Verifique a internet e recarregue a página.";
+  }
+})();
+</script>
+</body>
+</html>
