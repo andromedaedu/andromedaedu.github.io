@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gosto Calculado</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f1013; --panel: #17191e; --line: #2a2e36; --ink: #ebe8e2; --muted: #9a9ca4;
+  --accent: #4fc39a; --warn: #e5a24a; --ghost: #b48cf0; --disc: #e5c14a; --bad: #e0675a;
+  --body: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; --mono: "IBM Plex Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55; }
+button { font: inherit; cursor: pointer; }
+button:focus-visible, textarea:focus-visible, a:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 64px; display: grid; gap: 20px; }
+header.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+header.top h1 { margin: 0; font-size: 1.6rem; font-weight: 700; }
+.sub, .muted { color: var(--muted); }
+.sub { font-size: .95rem; }
+nav.tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+nav.tabs a { font-family: var(--mono); font-size: .85rem; color: var(--muted); text-decoration: none; border: 1px solid var(--line); border-radius: 6px; padding: 6px 12px; }
+nav.tabs a.on { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 600; }
+.intro { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent); padding: 16px 18px; border-radius: 6px; max-width: 80ch; }
+.intro p { margin: 0 0 8px; } .intro p:last-child { margin: 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: grid; gap: 14px; align-content: start; }
+.card h2 { margin: 0; font-size: 1.15rem; }
+.grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn { background: transparent; color: var(--ink); border: 1px solid #454b56; border-radius: 6px; padding: 8px 14px; }
+.btn:hover { border-color: var(--ink); }
+.btn.primary { background: var(--accent); color: #0b1a14; border-color: var(--accent); font-weight: 600; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+select { background: var(--panel); color: var(--ink); border: 1px solid #454b56; border-radius: 6px; padding: 7px 10px; font: inherit; }
+.songs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.song { text-align: left; background: #12141a; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; color: var(--ink); display: grid; gap: 4px; position: relative; }
+.song:hover { border-color: #555c68; }
+.song.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.song .t { font-weight: 600; line-height: 1.25; }
+.song .a { color: var(--muted); font-size: .88rem; }
+.song .meta { font-family: var(--mono); font-size: .72rem; color: var(--muted); }
+.chip { display: inline-block; font-family: var(--mono); font-size: .68rem; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); margin-right: 4px; white-space: nowrap; }
+.chip.gravadora { color: #cfd3da; }
+.chip.independente { color: var(--accent); border-color: #2e5f4d; }
+.chip.fantasma { color: var(--ghost); border-color: #4f3d6e; }
+.chip.descoberta { color: var(--disc); border-color: #6a5a24; }
+.gdot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.seeds { display: flex; flex-wrap: wrap; gap: 8px; }
+.seed { font-size: .9rem; border: 1px dashed var(--line); border-radius: 6px; padding: 4px 10px; }
+.editor { width: 100%; min-height: 520px; background: #0b0c10; color: #e2e4e8; border: 1px solid var(--line); border-radius: 6px; padding: 12px; font-family: var(--mono); font-size: .8rem; line-height: 1.5; resize: vertical; tab-size: 4; white-space: pre; overflow: auto; }
+.status { font-family: var(--mono); font-size: .8rem; color: var(--muted); }
+.console { background: #0b0c10; border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; font-family: var(--mono); font-size: .8rem; white-space: pre-wrap; color: #d7d9de; min-height: 40px; }
+.console.err { color: var(--bad); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.tile { background: #12141a; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.tile b { display: block; font-family: var(--mono); font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.tile span { font-size: .8rem; color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+td.num { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.tablewrap { overflow-x: auto; }
+.bars { display: grid; gap: 6px; }
+.bar { display: grid; grid-template-columns: 110px 1fr 34px; gap: 8px; align-items: center; font-size: .85rem; }
+.bar .track { background: #12141a; border-radius: 4px; height: 16px; overflow: hidden; }
+.bar .fill { height: 100%; border-radius: 4px; }
+.bar .n { font-family: var(--mono); text-align: right; }
+.days { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 4px; }
+.day { aspect-ratio: 1.3; border-radius: 4px; display: grid; place-items: center; font-family: var(--mono); font-size: .7rem; color: #0b0c10; font-weight: 600; position: relative; }
+.day.ghost::after, .day.disc::after { content: ""; position: absolute; top: 3px; right: 3px; width: 6px; height: 6px; border-radius: 50%; background: #0b0c10; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: .8rem; color: var(--muted); }
+.hidden { display: none !important; }
+.note { font-size: .85rem; color: var(--muted); }
+code { font-family: var(--mono); font-size: .85em; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Gosto Calculado</h1>
+      <div class="sub">Laboratório de recomendação musical · Tecnologia e Sociedade, Capítulo 4</div>
+    </div>
+    <nav class="tabs" aria-label="Partes do laboratório">
+      <a href="#catalogo" id="tab1">1. Catálogo</a><a href="#algoritmo" id="tab2">2. O algoritmo</a><a href="#dias" id="tab3">3. 30 dias</a>
+    </nav>
+  </header>
+
+  <!-- ===== ABA 1 ===== -->
+  <section id="view1" class="grid" style="display:grid;gap:20px">
+    <div class="intro">
+      <p><b>O catálogo.</b> Aqui estão 54 músicas de 9 gêneros. Todas as músicas e todos os artistas são <b>fictícios</b>. Este catálogo cabe em uma tela; o de uma plataforma de verdade tem mais de 100 milhões de faixas.</p>
+      <p>Cada música tem <b>energia</b> (0 = calma, 100 = agitada), <b>humor</b> (0 = triste, 100 = alegre) e <b>popularidade</b> (0 a 100). Repare também no tipo de artista: <span class="chip gravadora">gravadora</span> <span class="chip independente">independente</span> <span class="chip fantasma">fantasma</span> <span class="chip descoberta">modo descoberta</span></p>
+      <p><b>Escolha 3 músicas</b> para formar o seu perfil de ouvinte, ou use o perfil do livro.</p>
+    </div>
+    <div class="card">
+      <div class="row">
+        <button class="btn primary" id="useBook">Usar o perfil do livro</button>
+        <button class="btn" id="clearSeeds">Limpar escolha</button>
+        <label class="note" for="genreFilter" style="margin-left:auto">Gênero:</label>
+        <select id="genreFilter"><option value="">todos</option></select>
+      </div>
+      <div><span class="note">Seu perfil:</span> <div class="seeds" id="seedList" style="margin-top:6px"></div></div>
+      <div class="songs" id="songs"></div>
+    </div>
+  </section>
+
+  <!-- ===== ABA 2 ===== -->
+  <section id="view2" class="hidden" style="display:grid;gap:20px">
+    <div class="intro">
+      <p><b>O algoritmo.</b> O código em Python abaixo dá uma <b>nota</b> para cada música do catálogo. As 10 músicas com as maiores notas são as recomendações. Mude os <b>pesos</b> no início do código e clique em <b>Rodar</b> para ver o que muda.</p>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h2>O código</h2>
+        <div><span class="note">Perfil usado:</span> <div class="seeds" id="seedList2" style="margin-top:6px"></div></div>
+        <textarea class="editor" id="code" spellcheck="false" aria-label="Código do algoritmo"></textarea>
+        <div class="row">
+          <button class="btn primary" id="run" disabled>Rodar</button>
+          <button class="btn" id="reset">Restaurar o código original</button>
+        </div>
+        <div class="status" id="status">Carregando o Python…</div>
+        <div class="console hidden" id="out"></div>
+      </div>
+      <div class="card">
+        <h2>As 10 recomendações</h2>
+        <div class="tiles" id="tiles2"></div>
+        <div class="tablewrap"><table id="top10"></table></div>
+        <p class="note">A nota é a soma dos quatro critérios multiplicados pelos pesos. Notas iguais são desempatadas pela ordem do catálogo.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ABA 3 ===== -->
+  <section id="view3" class="hidden" style="display:grid;gap:20px">
+    <div class="intro">
+      <p><b>30 dias.</b> Agora o algoritmo trabalha sozinho. A cada dia, você ouve a música que ele recomenda em primeiro lugar. Essa música entra no seu histórico, o seu perfil muda e, no dia seguinte, o algoritmo recomenda de novo. O perfil olha as últimas 10 músicas ouvidas, e uma música só volta a ser recomendada 5 dias depois de tocar.</p>
+      <p class="muted">A simulação usa o código e os pesos que estão na aba 2 e o perfil escolhido na aba 1.</p>
+    </div>
+    <div class="card">
+      <div class="row"><button class="btn primary" id="sim" disabled>Simular 30 dias</button><span class="status" id="status3"></span></div>
+      <div class="console hidden" id="out3"></div>
+      <div id="simRes" class="hidden" style="display:grid;gap:18px">
+        <div class="tiles" id="tiles3"></div>
+        <div class="grid2">
+          <div style="display:grid;gap:10px">
+            <h2 style="margin:0;font-size:1.05rem">Os 30 dias</h2>
+            <div class="days" id="days"></div>
+            <div class="legend" id="legend"></div>
+            <p class="note">O pontinho escuro marca músicas baratas para a plataforma (fantasma ou modo descoberta).</p>
+          </div>
+          <div style="display:grid;gap:10px">
+            <h2 style="margin:0;font-size:1.05rem">O que você ouviu, por gênero</h2>
+            <div class="bars" id="bars"></div>
+          </div>
+        </div>
+        <details><summary class="note" style="cursor:pointer">Ver a lista dia a dia</summary><div class="tablewrap" style="margin-top:8px"><table id="dayTable"></table></div></details>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script>
+const CATALOGO = [{"id": 1, "titulo": "Varanda de Domingo", "artista": "Lia Macedo", "genero": "MPB", "energia": 30, "humor": 62, "popularidade": 78, "tipo": "gravadora", "modo_descoberta": false}, {"id": 2, "titulo": "Mapa do Interior", "artista": "Teodoro Brás", "genero": "MPB", "energia": 38, "humor": 55, "popularidade": 84, "tipo": "gravadora", "modo_descoberta": false}, {"id": 3, "titulo": "Chuva no Telhado", "artista": "Duo Aroeira", "genero": "MPB", "energia": 22, "humor": 40, "popularidade": 21, "tipo": "independente", "modo_descoberta": false}, {"id": 4, "titulo": "Canto de Cais", "artista": "Marina Toledo", "genero": "MPB", "energia": 35, "humor": 48, "popularidade": 17, "tipo": "independente", "modo_descoberta": false}, {"id": 5, "titulo": "Lua de Quintal", "artista": "Iara Nunes", "genero": "MPB", "energia": 28, "humor": 58, "popularidade": 26, "tipo": "independente", "modo_descoberta": true}, {"id": 6, "titulo": "Fotografia Antiga", "artista": "Bento Lima", "genero": "MPB", "energia": 44, "humor": 36, "popularidade": 45, "tipo": "gravadora", "modo_descoberta": false}, {"id": 7, "titulo": "Roda na Praça", "artista": "Grupo Batuqueiro", "genero": "Samba", "energia": 72, "humor": 84, "popularidade": 80, "tipo": "gravadora", "modo_descoberta": false}, {"id": 8, "titulo": "Pandeiro Novo", "artista": "Tonho do Morro", "genero": "Samba", "energia": 66, "humor": 78, "popularidade": 70, "tipo": "gravadora", "modo_descoberta": false}, {"id": 9, "titulo": "Fim de Tarde em Madureira", "artista": "Tia Cida", "genero": "Samba", "energia": 55, "humor": 70, "popularidade": 19, "tipo": "independente", "modo_descoberta": false}, {"id": 10, "titulo": "Cavaco de Estimação", "artista": "Os Bambas da Vila", "genero": "Samba", "energia": 62, "humor": 75, "popularidade": 24, "tipo": "independente", "modo_descoberta": false}, {"id": 11, "titulo": "Saudade em Dó", "artista": "Nilo Ferreira", "genero": "Samba", "energia": 48, "humor": 50, "popularidade": 15, "tipo": "independente", "modo_descoberta": true}, {"id": 12, "titulo": "Avenida", "artista": "Bloco Encantado", "genero": "Samba", "energia": 78, "humor": 88, "popularidade": 58, "tipo": "gravadora", "modo_descoberta": false}, {"id": 13, "titulo": "Baile da Laje", "artista": "MC Vitória", "genero": "Funk", "energia": 90, "humor": 80, "popularidade": 92, "tipo": "gravadora", "modo_descoberta": false}, {"id": 14, "titulo": "Tamborzão", "artista": "DJ Rato", "genero": "Funk", "energia": 88, "humor": 72, "popularidade": 85, "tipo": "gravadora", "modo_descoberta": false}, {"id": 15, "titulo": "Quebrada Acordada", "artista": "MC Lírico", "genero": "Funk", "energia": 80, "humor": 60, "popularidade": 30, "tipo": "independente", "modo_descoberta": false}, {"id": 16, "titulo": "Passinho Leve", "artista": "Bonde da Tela", "genero": "Funk", "energia": 84, "humor": 76, "popularidade": 28, "tipo": "independente", "modo_descoberta": false}, {"id": 17, "titulo": "Fluxo das Seis", "artista": "MC Dandara", "genero": "Funk", "energia": 86, "humor": 68, "popularidade": 34, "tipo": "independente", "modo_descoberta": true}, {"id": 18, "titulo": "Paredão", "artista": "Equipe Trovão", "genero": "Funk", "energia": 94, "humor": 70, "popularidade": 66, "tipo": "gravadora", "modo_descoberta": false}, {"id": 19, "titulo": "Estrada de Terra", "artista": "Diego & Rafael", "genero": "Sertanejo", "energia": 58, "humor": 45, "popularidade": 90, "tipo": "gravadora", "modo_descoberta": false}, {"id": 20, "titulo": "Copo Vazio", "artista": "Ana Clara Rios", "genero": "Sertanejo", "energia": 52, "humor": 32, "popularidade": 88, "tipo": "gravadora", "modo_descoberta": false}, {"id": 21, "titulo": "Viola do Avô", "artista": "Tião Moreira", "genero": "Sertanejo", "energia": 40, "humor": 52, "popularidade": 14, "tipo": "independente", "modo_descoberta": false}, {"id": 22, "titulo": "Porteira Aberta", "artista": "Irmãs Cardoso", "genero": "Sertanejo", "energia": 50, "humor": 60, "popularidade": 20, "tipo": "independente", "modo_descoberta": false}, {"id": 23, "titulo": "Sol de Goiás", "artista": "Juliano Prado", "genero": "Sertanejo", "energia": 60, "humor": 66, "popularidade": 31, "tipo": "independente", "modo_descoberta": true}, {"id": 24, "titulo": "Rodeio", "artista": "Os Peões", "genero": "Sertanejo", "energia": 70, "humor": 64, "popularidade": 62, "tipo": "gravadora", "modo_descoberta": false}, {"id": 25, "titulo": "Linha Vermelha", "artista": "Kaio Verso", "genero": "Rap", "energia": 74, "humor": 30, "popularidade": 82, "tipo": "gravadora", "modo_descoberta": false}, {"id": 26, "titulo": "Diário de Bordo", "artista": "Nega Rima", "genero": "Rap", "energia": 68, "humor": 38, "popularidade": 76, "tipo": "gravadora", "modo_descoberta": false}, {"id": 27, "titulo": "Ponto Final", "artista": "Coletivo Margem", "genero": "Rap", "energia": 62, "humor": 28, "popularidade": 18, "tipo": "independente", "modo_descoberta": false}, {"id": 28, "titulo": "Herança", "artista": "Raiz Concreta", "genero": "Rap", "energia": 66, "humor": 42, "popularidade": 22, "tipo": "independente", "modo_descoberta": false}, {"id": 29, "titulo": "Concreto e Flor", "artista": "Lua Preta", "genero": "Rap", "energia": 58, "humor": 46, "popularidade": 27, "tipo": "independente", "modo_descoberta": true}, {"id": 30, "titulo": "Sem Filtro", "artista": "Thiago Beats", "genero": "Rap", "energia": 78, "humor": 40, "popularidade": 55, "tipo": "gravadora", "modo_descoberta": false}, {"id": 31, "titulo": "Garagem", "artista": "Os Ruídos", "genero": "Rock", "energia": 82, "humor": 44, "popularidade": 68, "tipo": "gravadora", "modo_descoberta": false}, {"id": 32, "titulo": "Eletricidade", "artista": "Banda Faísca", "genero": "Rock", "energia": 88, "humor": 52, "popularidade": 60, "tipo": "gravadora", "modo_descoberta": false}, {"id": 33, "titulo": "Asfalto Molhado", "artista": "Vento Sul", "genero": "Rock", "energia": 70, "humor": 34, "popularidade": 16, "tipo": "independente", "modo_descoberta": false}, {"id": 34, "titulo": "Última Sessão", "artista": "Cinema Mudo", "genero": "Rock", "energia": 64, "humor": 40, "popularidade": 19, "tipo": "independente", "modo_descoberta": false}, {"id": 35, "titulo": "Fita Cassete", "artista": "Os Desplugados", "genero": "Rock", "energia": 76, "humor": 56, "popularidade": 25, "tipo": "independente", "modo_descoberta": true}, {"id": 36, "titulo": "Barulho Bom", "artista": "Trem Fantasma", "genero": "Rock", "energia": 92, "humor": 60, "popularidade": 40, "tipo": "gravadora", "modo_descoberta": false}, {"id": 37, "titulo": "Neon", "artista": "Bia Star", "genero": "Pop", "energia": 80, "humor": 86, "popularidade": 95, "tipo": "gravadora", "modo_descoberta": false}, {"id": 38, "titulo": "Mensagem Lida", "artista": "Léo Cruz", "genero": "Pop", "energia": 64, "humor": 58, "popularidade": 89, "tipo": "gravadora", "modo_descoberta": false}, {"id": 39, "titulo": "Quarto Azul", "artista": "Nina Sol", "genero": "Pop", "energia": 46, "humor": 44, "popularidade": 23, "tipo": "independente", "modo_descoberta": false}, {"id": 40, "titulo": "Coração em Modo Avião", "artista": "Duda Prisma", "genero": "Pop", "energia": 70, "humor": 74, "popularidade": 29, "tipo": "independente", "modo_descoberta": false}, {"id": 41, "titulo": "Selfie no Espelho", "artista": "Kaká Dias", "genero": "Pop", "energia": 74, "humor": 80, "popularidade": 33, "tipo": "independente", "modo_descoberta": true}, {"id": 42, "titulo": "Verão Sem Fim", "artista": "Joana Mar", "genero": "Pop", "energia": 76, "humor": 90, "popularidade": 71, "tipo": "gravadora", "modo_descoberta": false}, {"id": 43, "titulo": "Pulso", "artista": "Vórtice", "genero": "Eletrônica", "energia": 86, "humor": 66, "popularidade": 64, "tipo": "gravadora", "modo_descoberta": false}, {"id": 44, "titulo": "Madrugada Digital", "artista": "Ana Hertz", "genero": "Eletrônica", "energia": 78, "humor": 54, "popularidade": 20, "tipo": "independente", "modo_descoberta": false}, {"id": 45, "titulo": "Ondas", "artista": "Kilohertz", "genero": "Eletrônica", "energia": 60, "humor": 50, "popularidade": 17, "tipo": "independente", "modo_descoberta": false}, {"id": 46, "titulo": "Sintetizador Tropical", "artista": "Coqueiral Club", "genero": "Eletrônica", "energia": 82, "humor": 78, "popularidade": 26, "tipo": "independente", "modo_descoberta": true}, {"id": 47, "titulo": "Fluxo Contínuo", "artista": "Estúdio Horizonte", "genero": "Eletrônica", "energia": 50, "humor": 50, "popularidade": 12, "tipo": "fantasma", "modo_descoberta": false}, {"id": 48, "titulo": "Pista Principal", "artista": "DJ Kraken", "genero": "Eletrônica", "energia": 92, "humor": 72, "popularidade": 59, "tipo": "gravadora", "modo_descoberta": false}, {"id": 49, "titulo": "Foco Total", "artista": "Calma Sonora", "genero": "Lo-fi", "energia": 24, "humor": 50, "popularidade": 10, "tipo": "fantasma", "modo_descoberta": false}, {"id": 50, "titulo": "Café e Chuva", "artista": "Névoa Azul", "genero": "Lo-fi", "energia": 20, "humor": 54, "popularidade": 10, "tipo": "fantasma", "modo_descoberta": false}, {"id": 51, "titulo": "Estudar Sem Pressa", "artista": "Quarto 302", "genero": "Lo-fi", "energia": 26, "humor": 48, "popularidade": 10, "tipo": "fantasma", "modo_descoberta": false}, {"id": 52, "titulo": "Respirar", "artista": "Horizonte Calmo", "genero": "Lo-fi", "energia": 18, "humor": 52, "popularidade": 10, "tipo": "fantasma", "modo_descoberta": false}, {"id": 53, "titulo": "Ônibus da Tarde", "artista": "Beto Vinil", "genero": "Lo-fi", "energia": 30, "humor": 46, "popularidade": 16, "tipo": "independente", "modo_descoberta": false}, {"id": 54, "titulo": "Fones no Intervalo", "artista": "Clara Lumens", "genero": "Lo-fi", "energia": 32, "humor": 56, "popularidade": 21, "tipo": "independente", "modo_descoberta": false}];
+const MOTOR = "PAGAMENTO = {\"gravadora\": 1.0, \"independente\": 1.0, \"fantasma\": 0.2}\n\nMEMORIA = 10      # o perfil olha só as últimas 10 músicas ouvidas\nDESCANSO = 5      # uma música ouvida volta a ser recomendada depois de 5 dias\n\ndef montar_perfil(historico):\n    recentes = historico[-MEMORIA:]\n    n = len(recentes)\n    energia = sum(m[\"energia\"] for m in recentes) / n\n    humor = sum(m[\"humor\"] for m in recentes) / n\n    contagem = {}\n    for m in recentes:\n        contagem[m[\"genero\"]] = contagem.get(m[\"genero\"], 0) + 1\n    return {\"energia\": energia, \"humor\": humor, \"generos\": contagem}\n\ndef calcular_semelhanca(musica, perfil):\n    distancia = (abs(musica[\"energia\"] - perfil[\"energia\"]) + abs(musica[\"humor\"] - perfil[\"humor\"])) / 2\n    total = sum(perfil[\"generos\"].values())\n    parte = perfil[\"generos\"].get(musica[\"genero\"], 0) / total\n    s = 100 - distancia - 50 + 50 * parte\n    return max(0, min(100, s))\n\ndef recomendar(catalogo, historico, n=10):\n    perfil = montar_perfil(historico)\n    ouvidas = {m[\"id\"] for m in historico[-DESCANSO:]}\n    candidatas = [m for m in catalogo if m[\"id\"] not in ouvidas]\n    notas = [(pontuacao(m, perfil), m) for m in candidatas]\n    notas.sort(key=lambda x: (-x[0], x[1][\"id\"]))\n    return [dict(m, nota=round(nt, 1)) for nt, m in notas[:n]]\n\ndef pago(m):\n    if m[\"tipo\"] == \"fantasma\":\n        return PAGAMENTO[\"fantasma\"]\n    return 0.7 if m[\"modo_descoberta\"] else 1.0\n\ndef metricas(lista):\n    n = len(lista)\n    return {\n        \"generos\": len({m[\"genero\"] for m in lista}),\n        \"negocio\": round(100 * sum(1 for m in lista if m[\"tipo\"] == \"fantasma\" or m[\"modo_descoberta\"]) / n),\n        \"fantasma\": round(100 * sum(1 for m in lista if m[\"tipo\"] == \"fantasma\") / n),\n        \"independentes\": round(100 * sum(1 for m in lista if m[\"tipo\"] == \"independente\") / n),\n        \"popularidade\": round(sum(m[\"popularidade\"] for m in lista) / n),\n    }\n\ndef simular(catalogo, sementes, dias=30, por_dia=1):\n    historico = [m for m in catalogo if m[\"id\"] in sementes]\n    linhas = []\n    for dia in range(1, dias + 1):\n        top = recomendar(catalogo, historico, 10)\n        if len(top) == 0:\n            break\n        met = metricas(top)\n        ouvidas_hoje = top[:por_dia]\n        historico.extend(ouvidas_hoje)\n        linhas.append({\"dia\": dia, \"generos_top10\": met[\"generos\"], \"negocio_top10\": met[\"negocio\"],\n                       \"ouvidas\": [m[\"id\"] for m in ouvidas_hoje]})\n    ouvidas = historico[len(sementes):]\n    total_pago = sum(pago(m) for m in ouvidas)\n    resumo = {\n        \"musicas_ouvidas\": len(ouvidas),\n        \"musicas_diferentes\": len({m[\"id\"] for m in ouvidas}),\n        \"generos_ouvidos\": len({m[\"genero\"] for m in ouvidas}),\n        \"fantasma\": sum(1 for m in ouvidas if m[\"tipo\"] == \"fantasma\"),\n        \"modo_descoberta\": sum(1 for m in ouvidas if m[\"modo_descoberta\"]),\n        \"pago\": round(total_pago, 1),\n        \"pago_se_normal\": len(ouvidas),\n        \"por_genero\": {},\n    }\n    for m in ouvidas:\n        resumo[\"por_genero\"][m[\"genero\"]] = resumo[\"por_genero\"].get(m[\"genero\"], 0) + 1\n    return {\"dias\": linhas, \"resumo\": resumo}\n";
+const ALUNO = "# =============================================================\n#  O ALGORITMO DE RECOMENDAÇÃO\n#  Este é o código que decide qual música toca a seguir.\n#  Você pode mudar os PESOS e depois clicar em \"Rodar\".\n# =============================================================\n\n# ---- 1. OS PESOS (o que o algoritmo valoriza) ----\nPESO_SEMELHANCA = 1.0    # parecer com o que você já ouviu\nPESO_POPULARIDADE = 0.3  # ser um sucesso entre todos os usuários\nPESO_NOVIDADE = 0.0      # ser de um gênero que você ainda não ouviu\nPESO_NEGOCIO = 0.3       # ser mais barata para a plataforma\n\n\n# ---- 2. A NOTA DE CADA MÚSICA ----\n# A função recebe uma música e o seu perfil de ouvinte\n# e devolve uma nota. Quanto maior a nota, maior a chance\n# de a música ser recomendada.\ndef pontuacao(musica, perfil):\n\n    # Semelhança (0 a 100): quanto a energia e o humor da música\n    # se parecem com a média do que você ouviu. Gêneros que você\n    # já ouviu ganham vantagem.\n    semelhanca = calcular_semelhanca(musica, perfil)\n\n    # Popularidade (0 a 100): já vem pronta no catálogo.\n    popularidade = musica[\"popularidade\"]\n\n    # Novidade: 100 se o gênero for novo para você; 0 se não for.\n    if musica[\"genero\"] in perfil[\"generos\"]:\n        novidade = 0\n    else:\n        novidade = 100\n\n    # Negócio: 100 se a plataforma paga menos por essa música\n    # (artista fantasma ou artista no \"modo descoberta\").\n    if musica[\"tipo\"] == \"fantasma\" or musica[\"modo_descoberta\"]:\n        negocio = 100\n    else:\n        negocio = 0\n\n    nota = (PESO_SEMELHANCA * semelhanca\n            + PESO_POPULARIDADE * popularidade\n            + PESO_NOVIDADE * novidade\n            + PESO_NEGOCIO * negocio)\n    return nota\n";
+const PERFIL_LIVRO = [1, 7, 25];
+const GENEROS = ["MPB","Samba","Funk","Sertanejo","Rap","Rock","Pop","Eletrônica","Lo-fi"];
+const COR = {"MPB":"#4fc39a","Samba":"#e5a24a","Funk":"#e0675a","Sertanejo":"#d9c27a","Rap":"#7aa7e8","Rock":"#c8cdd6","Pop":"#ef8fc0","Eletrônica":"#57c6d9","Lo-fi":"#b48cf0"};
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const byId = Object.fromEntries(CATALOGO.map(m => [m.id, m]));
+let seeds = [];
+let pyodide = null;
+try { const s = JSON.parse(localStorage.getItem("gosto_seeds") || "[]"); if (Array.isArray(s)) seeds = s.filter(id => byId[id]).slice(0, 3); } catch (e) {}
+try { const c = localStorage.getItem("gosto_code"); if (c) $("code").value = c; } catch (e) {}
+if (!$("code").value) $("code").value = ALUNO;
+if (seeds.length !== 3) seeds = PERFIL_LIVRO.slice();
+
+function save() { try { localStorage.setItem("gosto_seeds", JSON.stringify(seeds)); localStorage.setItem("gosto_code", $("code").value); } catch (e) {} }
+function chips(m) {
+  let h = `<span class="chip ${m.tipo}">${m.tipo}</span>`;
+  if (m.modo_descoberta) h += `<span class="chip descoberta">modo descoberta</span>`;
+  return h;
+}
+function seedHtml() {
+  return seeds.map(id => { const m = byId[id]; return `<span class="seed"><span class="gdot" style="background:${COR[m.genero]}"></span>${esc(m.titulo)} <span class="muted">· ${esc(m.genero)}</span></span>`; }).join("") || `<span class="note">nenhuma música escolhida</span>`;
+}
+function renderSeeds() {
+  $("seedList").innerHTML = seedHtml() + (seeds.length < 3 ? `<span class="note">faltam ${3 - seeds.length}</span>` : "");
+  $("seedList2").innerHTML = seedHtml();
+}
+function renderSongs() {
+  const g = $("genreFilter").value;
+  $("songs").innerHTML = CATALOGO.filter(m => !g || m.genero === g).map(m => `
+    <button class="song ${seeds.includes(m.id) ? "sel" : ""}" data-id="${m.id}" aria-pressed="${seeds.includes(m.id)}">
+      <span class="t"><span class="gdot" style="background:${COR[m.genero]}"></span>${esc(m.titulo)}</span>
+      <span class="a">${esc(m.artista)} · ${esc(m.genero)}</span>
+      <span class="meta">energia ${m.energia} · humor ${m.humor} · popularidade ${m.popularidade}</span>
+      <span>${chips(m)}</span>
+    </button>`).join("");
+}
+$("genreFilter").innerHTML += GENEROS.map(g => `<option>${g}</option>`).join("");
+$("genreFilter").addEventListener("change", renderSongs);
+$("songs").addEventListener("click", (e) => {
+  const b = e.target.closest(".song"); if (!b) return;
+  const id = +b.dataset.id;
+  if (seeds.includes(id)) seeds = seeds.filter(x => x !== id);
+  else if (seeds.length < 3) seeds.push(id);
+  else { seeds.shift(); seeds.push(id); }
+  save(); renderSongs(); renderSeeds();
+});
+$("useBook").onclick = () => { seeds = PERFIL_LIVRO.slice(); save(); renderSongs(); renderSeeds(); };
+$("clearSeeds").onclick = () => { seeds = []; save(); renderSongs(); renderSeeds(); };
+$("reset").onclick = () => { $("code").value = ALUNO; save(); };
+$("code").addEventListener("input", save);
+$("code").addEventListener("keydown", (e) => {
+  if (e.key === "Tab") { e.preventDefault(); const t = e.target, s = t.selectionStart; t.value = t.value.slice(0, s) + "    " + t.value.slice(t.selectionEnd); t.selectionStart = t.selectionEnd = s + 4; }
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) { e.preventDefault(); onRun(); }
+});
+
+function prepare(outEl) {
+  outEl.classList.add("hidden"); outEl.classList.remove("err"); outEl.textContent = "";
+  if (seeds.length !== 3) { outEl.textContent = "Escolha 3 músicas na aba 1 (ou use o perfil do livro) antes de rodar."; outEl.classList.remove("hidden"); outEl.classList.add("err"); return null; }
+  const lines = [];
+  pyodide.setStdout({ batched: (s) => lines.push(s) });
+  pyodide.setStderr({ batched: (s) => lines.push(s) });
+  const ns = pyodide.globals.get("dict")();
+  try {
+    pyodide.runPython(MOTOR, { globals: ns });
+    pyodide.runPython($("code").value, { globals: ns });
+    if (!ns.has("pontuacao")) throw new Error("O código precisa ter a função pontuacao(musica, perfil).");
+  } catch (e) {
+    outEl.textContent = "Erro no código:\n" + friendly(e); outEl.classList.remove("hidden"); outEl.classList.add("err"); ns.destroy(); return null;
+  }
+  return { ns, lines };
+}
+function friendly(e) { const s = String(e.message || e); const i = s.lastIndexOf("File \"<exec>\""); return i >= 0 ? s.slice(i) : s; }
+function toJs(p) { const r = p.toJs({ dict_converter: Object.fromEntries }); p.destroy(); return r; }
+
+function tile(v, label) { return `<div class="tile"><b>${v}</b><span>${label}</span></div>`; }
+
+function onRun() {
+  if (!pyodide) return;
+  const prep = prepare($("out")); if (!prep) return;
+  const { ns, lines } = prep;
+  try {
+    const cat = pyodide.toPy(CATALOGO);
+    const hist = pyodide.toPy(seeds.map(id => byId[id]));
+    const top = toJs(ns.get("recomendar")(cat, hist, 10));
+    const met = toJs(ns.get("metricas")(pyodide.toPy(top)));
+    cat.destroy(); hist.destroy();
+    $("tiles2").innerHTML = tile(met.generos, "gêneros diferentes") + tile(met.negocio + "%", "baratas para a plataforma") + tile(met.independentes + "%", "artistas independentes") + tile(met.popularidade, "popularidade média");
+    $("top10").innerHTML = `<tr><th>#</th><th>Música</th><th>Gênero</th><th>Tipo</th><th style="text-align:right">Nota</th></tr>` +
+      top.map((m, i) => `<tr><td class="num">${i + 1}</td><td>${esc(m.titulo)}<div class="muted" style="font-size:.8rem">${esc(m.artista)}</div></td><td><span class="gdot" style="background:${COR[m.genero]}"></span>${esc(m.genero)}</td><td>${chips(m)}</td><td class="num">${Number(m.nota).toFixed(1)}</td></tr>`).join("");
+    if (lines.length) { $("out").textContent = lines.join("\n"); $("out").classList.remove("hidden"); }
+    $("status").textContent = "Pronto. Mude os pesos e rode de novo para comparar.";
+  } catch (e) {
+    $("out").textContent = "Erro ao rodar:\n" + friendly(e); $("out").classList.remove("hidden"); $("out").classList.add("err");
+  } finally { ns.destroy(); }
+}
+
+function onSim() {
+  if (!pyodide) return;
+  const prep = prepare($("out3")); if (!prep) return;
+  const { ns } = prep;
+  try {
+    const cat = pyodide.toPy(CATALOGO);
+    const r = toJs(ns.get("simular")(cat, pyodide.toPy(seeds), 30, 1));
+    cat.destroy();
+    const R = r.resumo;
+    $("tiles3").innerHTML = tile(R.musicas_ouvidas, "músicas tocadas") + tile(R.musicas_diferentes, "músicas diferentes") + tile(R.generos_ouvidos, "gêneros ouvidos") + tile(R.fantasma + R.modo_descoberta, "baratas para a plataforma") + tile(String(R.pago).replace(".", ",") + " / " + R.pago_se_normal, "pago aos artistas*");
+    const tocadas = r.dias.map(d => byId[d.ouvidas[0]]);
+    $("days").innerHTML = tocadas.map((m, i) => `<div class="day ${m.tipo === "fantasma" ? "ghost" : ""} ${m.modo_descoberta ? "disc" : ""}" style="background:${COR[m.genero]}" title="Dia ${i + 1}: ${esc(m.titulo)} (${esc(m.genero)})">${i + 1}</div>`).join("");
+    const usados = GENEROS.filter(g => R.por_genero[g]);
+    $("legend").innerHTML = usados.map(g => `<span><span class="gdot" style="background:${COR[g]}"></span>${g}</span>`).join("");
+    $("bars").innerHTML = GENEROS.map(g => { const n = R.por_genero[g] || 0; return `<div class="bar"><span>${g}</span><div class="track"><div class="fill" style="width:${(n / 30) * 100}%;background:${COR[g]}"></div></div><span class="n">${n}</span></div>`; }).join("") +
+      `<p class="note">* Cada música tocada vale 1 quando o artista recebe o valor normal. No modo descoberta o artista recebe 0,7; a música fantasma custa 0,2 à plataforma.</p>`;
+    $("dayTable").innerHTML = `<tr><th>Dia</th><th>Música</th><th>Gênero</th><th>Tipo</th><th style="text-align:right">Gêneros no top 10</th></tr>` +
+      r.dias.map((d, i) => { const m = tocadas[i]; return `<tr><td class="num">${d.dia}</td><td>${esc(m.titulo)}</td><td>${esc(m.genero)}</td><td>${chips(m)}</td><td class="num">${d.generos_top10}</td></tr>`; }).join("");
+    $("simRes").classList.remove("hidden");
+    $("status3").textContent = "Simulação concluída.";
+  } catch (e) {
+    $("out3").textContent = "Erro ao simular:\n" + friendly(e); $("out3").classList.remove("hidden"); $("out3").classList.add("err");
+  } finally { ns.destroy(); }
+}
+$("run").onclick = onRun;
+$("sim").onclick = onSim;
+
+function route() {
+  const h = location.hash || "#catalogo";
+  const map = { "#catalogo": 1, "#algoritmo": 2, "#dias": 3 };
+  const n = map[h] || 1;
+  [1, 2, 3].forEach(i => { $("view" + i).classList.toggle("hidden", i !== n); $("tab" + i).classList.toggle("on", i === n); });
+  renderSeeds();
+}
+window.addEventListener("hashchange", route);
+renderSongs(); route();
+
+(async () => {
+  try {
+    if (typeof loadPyodide !== "function") throw new Error("sem pyodide");
+    pyodide = await loadPyodide();
+    $("status").textContent = "Python pronto. Dica: Ctrl/Cmd + Enter executa.";
+    $("run").disabled = false; $("sim").disabled = false;
+    onRun();
+  } catch (e) {
+    $("status").textContent = "Não foi possível carregar o Python. Verifique a internet e recarregue a página.";
+    $("status3").textContent = "Python indisponível.";
+  }
+})();
+</script>
+</body>
+</html>
